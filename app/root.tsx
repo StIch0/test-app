@@ -1,75 +1,108 @@
-import {
-  isRouteErrorResponse,
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from "react-router";
+import { Links, Meta, Scripts, ScrollRestoration } from "react-router";
 
+import React, { useRef } from "react";
 import type { Route } from "./+types/root";
 import "./app.css";
 
-export const links: Route.LinksFunction = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
-  },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-  },
-];
-
-export function Layout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <Meta />
-        <Links />
-      </head>
-      <body>
-        {children}
-        <ScrollRestoration />
-        <Scripts />
-      </body>
-    </html>
-  );
+interface Param {
+  id: number;
+  name: string;
+  type: string;
+}
+interface ParamValue {
+  paramId: number;
+  value: string;
+}
+interface Model {
+  paramValues: ParamValue[];
+  colors: Color[];
+}
+interface Props {
+  params: Param[];
+  model: Model;
 }
 
-export default function App() {
-  return <Outlet />;
+interface Color {}
+
+interface State {
+  paramValues: { [PId in number]: string };
 }
+class ParamEditor extends React.Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      paramValues: {},
+    };
+  }
+  public getModel(): Model {
+    const { paramValues } = this.state;
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
-  let stack: string | undefined;
-
-  if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
-    details =
-      error.status === 404
-        ? "The requested page could not be found."
-        : error.statusText || details;
-  } else if (import.meta.env.DEV && error && error instanceof Error) {
-    details = error.message;
-    stack = error.stack;
+    return {
+      colors: [],
+      paramValues: Object.entries(paramValues).map(([key, value]) => ({
+        paramId: Number(key),
+        value,
+      })),
+    };
   }
 
+  private handleParamChange(id: number, value: string) {
+    this.setState((prevState) => ({
+      paramValues: {
+        ...prevState.paramValues,
+        [id]: value,
+      },
+    }));
+  }
+
+  render() {
+    const { params } = this.props;
+    const { paramValues } = this.state;
+    return (
+      <div>
+        {params.map((param) => (
+          <div key={param.id} style={{ marginBottom: "10px" }}>
+            <label style={{ display: "block", marginBottom: "5px" }}>
+              {param.name}
+            </label>
+            <input
+              type="text"
+              value={paramValues[param.id] || ""}
+              onChange={(e) => this.handleParamChange(param.id, e.target.value)}
+              style={{ width: "100%", padding: "5px" }}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+}
+
+const params: Param[] = [
+  { id: 1, name: "Назначение", type: "string" },
+  { id: 2, name: "Длина", type: "string" },
+];
+
+const model: Model = {
+  paramValues: [
+    { paramId: 1, value: "повседневное" },
+    { paramId: 2, value: "средняя" },
+  ],
+  colors: [],
+};
+
+export default function App() {
+  const ref = useRef<ParamEditor>(null);
+
+  const handleGetModel = () => {
+    const model = ref?.current?.getModel();
+    console.log(model);
+  };
+
   return (
-    <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
-      {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
-          <code>{stack}</code>
-        </pre>
-      )}
-    </main>
+    <div>
+      <ParamEditor model={model} params={params} ref={ref} />
+      <button onClick={handleGetModel}>Get Model</button>
+    </div>
   );
 }
